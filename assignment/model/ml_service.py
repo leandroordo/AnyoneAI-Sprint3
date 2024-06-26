@@ -9,17 +9,18 @@ from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.applications.resnet50 import decode_predictions, preprocess_input
 from tensorflow.keras.preprocessing import image
 
-# TODO
 # Connect to Redis and assign to variable `db``
 # Make use of settings.py module to get Redis settings like host, port, etc.
-db = None
+# https://redis-py.readthedocs.io/en/stable/connections.html#
+db = redis.Redis(
+    host= settings.REDIS_IP,
+    port=settings.REDIS_PORT,
+    db=settings.REDIS_DB_ID)
 
-# TODO
 # Load your ML model and assign to variable `model`
 # See https://drive.google.com/file/d/1ADuBSE4z2ZVIdn66YDSwxKv-58U7WEOn/view?usp=sharing
 # for more information about how to use this model.
-model = None
-
+model = ResNet50(include_top=True, weights="imagenet")
 
 def predict(image_name):
     """
@@ -40,8 +41,39 @@ def predict(image_name):
     class_name = None
     pred_probability = None
 
-    # TODO
-    raise NotImplementedError
+    # Now it's time to load the image
+    # We will use `image` module from tensorflow.keras
+    # We also need to change the image to the input image size
+    # the Resnet50 model is expecting, in this case (224, 224).
+    img = image.load_img(
+        os.path.join(settings.UPLOAD_FOLDER, image_name),
+        target_size=(224, 224)
+    )
+
+    # Convert the PIL image to a Numpy
+    # array before sending it to the model
+    image_array = image.img_to_array(img)
+ 
+    # Also add an extra dimension to this array
+    # because our model is expecting as input a batch of images.
+    # In this particular case, we will have a batch with a single
+    # image inside
+    image_batch = np.expand_dims(image_array, axis=0)
+    
+    # Now we scale pixels values
+    image_batch = preprocess_input(image_batch)
+
+    # Run model on batch of images (only one)
+    predictions = model.predict(image_batch)
+
+    # Get the predicted label with the highest probability
+    top_prediction = decode_predictions(predictions, top=1)
+
+    # Get the first result
+    # top_prediction format: 3-dimension list
+    # [[('n02108551', 'Tibetan_mastiff', 0.9666902)]]
+    class_name = top_prediction[0][0][1]
+    pred_probability = top_prediction[0][0][2]
 
     return class_name, pred_probability
 
@@ -71,8 +103,32 @@ def classify_process():
         #      sent
         # Hint: You should be able to successfully implement the communication
         #       code with Redis making use of functions `brpop()` and `set()`.
-        # TODO
-        raise NotImplementedError
+        
+        # 1
+        # For reading messages from the queue we can use `brpop()`.
+        # It will remove and return the last element of the list.
+        # If the list is empty, it will block the connection,
+        # waiting for some new element to appear.
+        # https://redis.io/docs/latest/commands/brpop/
+        queue_name, msg_json = db.brpop(settings.REDIS_QUEUE)
+
+        # 2
+        # Convert json to dict
+        msg = json.loads(msg_json)
+
+        # Call predict function, passing in the image name
+        class_name, pred_probability = predict(msg["image_name"])
+
+        # 3
+        prediction_dict = {
+            "prediction": class_name,
+            "score": str(pred_probability),     #Convert to string to serialize
+        }
+        prediction_json = json.dumps(prediction_dict)
+
+        # 4
+        msg_id = msg["id"]
+        db.set(msg_id, prediction_json)
 
         # Sleep for a bit
         time.sleep(settings.SERVER_SLEEP)
