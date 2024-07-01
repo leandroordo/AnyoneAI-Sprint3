@@ -152,7 +152,7 @@ def feedback():
     if report:
         try:
             with open(settings.FEEDBACK_FILEPATH, "a") as file:
-                file.write(report + '\n------------------------\n\n')
+                file.write(report + '\n')
         except FileNotFoundError:
             return render_template("index.html")        
 

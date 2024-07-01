@@ -7,13 +7,13 @@ class TestIntegration(unittest.TestCase):
     def test_index(self):
         response = requests.request(
             "GET",
-            "http://0.0.0.0/",
+            "http://127.0.0.1/",
         )
         self.assertEqual(response.status_code, 200)
 
         response = requests.request(
             "POST",
-            "http://0.0.0.0/",
+            "http://127.0.0.1/",
         )
         self.assertEqual(response.status_code, 200)
 
@@ -23,18 +23,19 @@ class TestIntegration(unittest.TestCase):
         payload = {}
         response = requests.request(
             "POST",
-            "http://0.0.0.0/predict",
+            "http://127.0.0.1/predict",
             headers=headers,
             data=payload,
             files=files,
         )
+
         self.assertEqual(response.status_code, 200)
         data = response.json()
+
         self.assertEqual(len(data.keys()), 3)
         self.assertEqual(data["success"], True)
         self.assertEqual(data["prediction"], "Eskimo_dog")
-        self.assertAlmostEqual(data["score"], 0.9346, 5)
-
+        self.assertAlmostEqual(float(data["score"]), 0.9346, 5)
 
 if __name__ == "__main__":
     unittest.main()
