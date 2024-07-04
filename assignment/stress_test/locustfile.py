@@ -6,5 +6,18 @@ class APIUser(HttpUser):
 
     # Put your stress tests here.
     # See https://docs.locust.io/en/stable/writing-a-locustfile.html for help.
-    # TODO
-    raise NotImplementedError
+
+    @task
+    def test_index(self):
+        self.client.get("http://127.0.0.1/")
+
+    @task
+    def test_predict(self):
+        files = [("file", ("dog.jpeg", open("dog.jpeg", "rb"), "image/jpeg"))]
+        headers = {}
+        payload = {}
+        self.client.post("http://127.0.0.1/predict",
+            headers=headers,
+            data=payload,
+            files=files,
+        )
