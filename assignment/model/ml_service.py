@@ -13,7 +13,7 @@ from tensorflow.keras.preprocessing import image
 # Make use of settings.py module to get Redis settings like host, port, etc.
 # https://redis-py.readthedocs.io/en/stable/connections.html#
 db = redis.Redis(
-    host= settings.REDIS_IP,
+    host=settings.REDIS_IP,
     port=settings.REDIS_PORT,
     db=settings.REDIS_DB_ID)
 
